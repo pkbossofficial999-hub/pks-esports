@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PKS ESPORTS | MASTER V3</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --bg: #050b18; --card: #101935; --primary: #3b82f6; --accent: #fbbf24; --success: #22c55e; --danger: #ef4444; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding-bottom: 80px; }
+        .section { display: none; padding: 15px; }
+        .active { display: block; }
+        input, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #0f172a; border: 1px solid #1e293b; color: white; border-radius: 10px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-p { background: var(--primary); color: white; }
+        .match-card { background: var(--card); border-radius: 15px; margin-bottom: 20px; overflow: hidden; border: 1px solid #1e293b; padding: 10px; }
+        .m-img { width: 100%; height: 160px; object-fit: cover; border-radius: 10px; }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 9999; display: none; padding: 20px; overflow-y: auto; }
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #0a122a; display: flex; padding: 12px 0; border-top: 1px solid #1e293b; justify-content: space-around; z-index: 1000; }
+        .nav-item { text-align: center; font-size: 11px; color: #64748b; cursor: pointer; }
+        #auth-sec { background: var(--bg); position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; justify-content: center; padding: 30px; }
+        .adm-tab { display:none; background: #0f172a; padding: 10px; border-radius: 10px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-sec">
+        <h1 style="text-align:center; color:var(--primary);">PKS ESPORTS</h1>
+        <input type="email" id="auth-email" placeholder="Email Address">
+        <input type="password" id="auth-pass" placeholder="Password">
+        <button class="btn btn-p" onclick="login()">LOGIN</button>
+        <button class="btn" style="background:transparent; color:var(--primary); border:1px solid var(--primary); margin-top:10px;" onclick="signup()">CREATE ACCOUNT</button>
+    </div>
+
+    <div id="rules-modal" class="modal">
+        <h2 id="modal-title" style="color:var(--accent);">Match Info</h2>
+        <div id="modal-content">
+            <div style="background:#1e293b; padding:15px; border-radius:10px; margin-bottom:10px;">
+                <h4 style="color:var(--primary); margin:0;">🏆 Prize Pool</h4>
+                <p id="modal-prize" style="font-size:14px; white-space:pre-line; color:#cbd5e1;"></p>
+            </div>
+            <div style="background:#1e293b; padding:15px; border-radius:10px; margin-bottom:10px;">
+                <h4 style="color:var(--primary); margin:0;">📜 Rules</h4>
+                <p id="modal-rules" style="font-size:14px; white-space:pre-line; color:#cbd5e1;"></p>
+            </div>
+        </div>
+        <button class="btn btn-p" onclick="closeModal()">CLOSE INFO</button>
+    </div>
+
+    <div id="home-sec" class="section">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Available Matches</h3>
+            <div onclick="window.location.href='https://wa.me/7004581190'" style="color:var(--success); font-size:24px;"><i class="fab fa-whatsapp"></i></div>
+        </div>
+        <div id="match-list"></div>
+    </div>
+
+    <div id="wallet-sec" class="section">
+        <div class="match-card" style="padding:25px; text-align:center; background: linear-gradient(135deg, #1e3a8a, #050b18);">
+            <p style="margin:0; opacity:0.8;">Real Money</p>
+            <h1 id="real-bal-val" style="font-size: 45px; margin: 5px 0;">₹0</h1>
+            <p style="margin:0; opacity:0.8;">Pending Money: <span id="pend-bal-val" style="color:var(--accent);">₹0</span></p>
+        </div>
+
+        <div class="match-card">
+            <h4 style="color:var(--accent); margin-bottom:5px;">Send money on this UPI & give details</h4>
+            <div onclick="copyUPI()" style="background:#000; padding:12px; text-align:center; border:1px dashed var(--primary); border-radius:8px; cursor:pointer;">
+                <b style="color:var(--primary); font-size:18px;">7004581190@mbk</b><br><small>TAP TO COPY</small>
+            </div>
+            <input type="number" id="amt" placeholder="Amount">
+            <input type="text" id="utr" placeholder="12 Digit UTR Number">
+            <button class="btn btn-p" onclick="sendDetails()">SUBMIT DEPOSIT</button>
+        </div>
+
+        <div class="match-card">
+            <h4>Withdraw Money</h4>
+            <input type="number" id="wd-amt" placeholder="Min. ₹20">
+            <input type="text" id="wd-upi" placeholder="Your UPI ID">
+            <button class="btn" style="background:#8b5cf6; color:white;" onclick="requestWithdraw()">WITHDRAW NOW</button>
+        </div>
+    </div>
+
+    <div id="profile-sec" class="section">
+        <div class="match-card" style="padding:30px; text-align:center;">
+            <i class="fa fa-user-circle" style="font-size:70px; color:var(--primary);"></i>
+            <h3 id="u-email-txt" style="margin:15px 0; font-size:14px;">User Email</h3>
+            <button class="btn" style="background:var(--danger); color:white;" onclick="logout()">LOGOUT</button>
+        </div>
+    </div>
+
+    <div id="admin-sec" class="section">
+        <h2 style="color:var(--accent);">Admin Panel</h2>
+        <div style="display:flex; gap:5px; overflow-x:auto; margin-bottom:10px;">
+            <button class="btn btn-p" onclick="showAdmTab('adm-match')">Matches</button>
+            <button class="btn btn-p" onclick="showAdmTab('adm-dep')">Deposits</button>
+            <button class="btn btn-p" onclick="showAdmTab('adm-wd')">Withdraws</button>
+            <button class="btn btn-p" onclick="showAdmTab('adm-bal')">Add Balance</button>
+            <button class="btn btn-p" onclick="showAdmTab('adm-ban')">Ban</button>
+        </div>
+
+        <div id="adm-match" class="adm-tab" style="display:block;">
+            <h4>Create Match</h4>
+            <input type="text" id="m-title-in" placeholder="Title">
+            <input type="text" id="m-img-in" placeholder="Image URL">
+            <input type="number" id="m-fee-in" placeholder="Fee">
+            <textarea id="m-prize-in" placeholder="Prize Pool"></textarea>
+            <textarea id="m-rules-in" placeholder="Rules"></textarea>
+            <button class="btn btn-p" onclick="adminCreateMatch()">PUBLISH</button>
+        </div>
+
+        <div id="adm-dep" class="adm-tab">
+            <h4>Pending Deposits</h4>
+            <div id="adm-dep-list"></div>
+        </div>
+
+        <div id="adm-wd" class="adm-tab">
+            <h4>Withdraw Requests</h4>
+            <div id="adm-wd-list"></div>
+        </div>
+
+        <div id="adm-bal" class="adm-tab">
+            <h4>Add Balance to User</h4>
+            <input type="text" id="bal-email-in" placeholder="User Email">
+            <input type="number" id="bal-amt-in" placeholder="Enter Amount to ADD">
+            <button class="btn btn-p" onclick="adminUpdateBalance()">ADD BALANCE</button>
+        </div>
+
+        <div id="adm-ban" class="adm-tab">
+            <h4>Ban User</h4>
+            <input type="text" id="ban-email" placeholder="User Email">
+            <button class="btn" style="background:red; color:white;" onclick="banUser()">BAN USER</button>
+        </div>
+    </div>
+
+    <nav class="bottom-nav" id="nav-bar" style="display:none;">
+        <div class="nav-item" onclick="showSec('home-sec')"><i class="fa fa-home"></i><br>Home</div>
+        <div class="nav-item" onclick="showSec('wallet-sec')"><i class="fa fa-wallet"></i><br>Wallet</div>
+        <div class="nav-item" onclick="showSec('profile-sec')"><i class="fa fa-user"></i><br>Profile</div>
+        <div id="adm-btn" class="nav-item" style="display:none;" onclick="showSec('admin-sec')"><i class="fa fa-user-shield"></i><br>Admin</div>
+    </nav>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDw2jWpR-45NVF2plPyRcClXSGGjaA4bkQ",
+            authDomain: "pks-esports.firebaseapp.com",
+            databaseURL: "https://pks-esports-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "pks-esports",
+            storageBucket: "pks-esports.firebasestorage.app",
+            messagingSenderId: "485814526294",
+            appId: "1:485814526294:web:e798fc5b3a64273233b6f7"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database(), auth = firebase.auth();
+
+        function login() { auth.signInWithEmailAndPassword(document.getElementById('auth-email').value, document.getElementById('auth-pass').value).catch(e => alert(e.message)); }
+        function signup() { 
+            const e = document.getElementById('auth-email').value;
+            auth.createUserWithEmailAndPassword(e, document.getElementById('auth-pass').value).then(res => {
+                db.ref('users/' + res.user.uid).set({ email: e, wallet: 0, pending_wallet: 0 });
+            }).catch(e => alert(e.message)); 
+        }
+        function logout() { auth.signOut().then(() => location.reload()); }
+
+        auth.onAuthStateChanged(user => {
+            if(user) {
+                document.getElementById('auth-sec').style.display = 'none';
+                document.getElementById('nav-bar').style.display = 'flex';
+                document.getElementById('u-email-txt').innerText = user.email;
+                if(user.email === "pkbossofficial999@gmail.com") { 
+                    document.getElementById('adm-btn').style.display = 'block'; 
+                    loadAdminDeps(); loadAdminWDs();
+                }
+                showSec('home-sec');
+                db.ref('users/' + user.uid).on('value', snap => {
+                    const d = snap.val() || {};
+                    document.getElementById('real-bal-val').innerText = "₹" + (Number(d.wallet) || 0);
+                    document.getElementById('pend-bal-val').innerText = "₹" + (Number(d.pending_wallet) || 0);
+                });
+                loadMatches();
+            } else { document.getElementById('auth-sec').style.display = 'flex'; }
+        });
+
+        function loadMatches() {
+            db.ref('matches').on('value', snap => {
+                const list = document.getElementById('match-list'); list.innerHTML = '';
+                snap.forEach(c => {
+                    const m = c.val();
+                    list.innerHTML += `<div class="match-card"><img src="${m.img}" class="m-img"><b>${m.title}</b><br><small>Fee: ₹${m.fee}</small><div style="display:flex; gap:10px; margin-top:10px;"><button class="btn btn-p" style="flex:1" onclick="openRules('${c.key}')">INFO</button><button class="btn" style="flex:1; background:var(--success); color:white;" onclick="alert('Join Logic Coming Soon')">JOIN</button></div></div>`;
+                });
+            });
+        }
+
+        function openRules(id) {
+            db.ref('matches/' + id).once('value').then(s => {
+                const m = s.val();
+                document.getElementById('modal-title').innerText = m.title;
+                document.getElementById('modal-prize').innerText = m.prize || "TBD";
+                document.getElementById('modal-rules').innerText = m.rules || "No Rules.";
+                document.getElementById('rules-modal').style.display = 'block';
+            });
+        }
+
+        function sendDetails() {
+            const a = parseInt(document.getElementById('amt').value), u = document.getElementById('utr').value;
+            if(!a || u.length < 10) return alert("Fill details!");
+            db.ref('users/' + auth.currentUser.uid + '/pending_wallet').transaction(c => (Number(c) || 0) + a);
+            db.ref('logs').push({ email: auth.currentUser.email, uid: auth.currentUser.uid, amount: a, utr: u, status: 'pending' });
+            alert("Submitted!");
+        }
+
+        function requestWithdraw() {
+            const amt = parseInt(document.getElementById('wd-amt').value), upi = document.getElementById('wd-upi').value;
+            if(amt < 20 || !upi) return alert("Minimum withdrawal is ₹20!");
+            db.ref('users/'+auth.currentUser.uid).once('value', s => {
+                if((Number(s.val().wallet) || 0) < amt) return alert("Insufficient Balance!");
+                db.ref('withdraws').push({ email: auth.currentUser.email, uid: auth.currentUser.uid, amount: amt, upi: upi, status: 'pending' });
+                alert("Withdraw request sent!");
+            });
+        }
+
+        // ADD BALANCE LOGIC (FIXED)
+        async function adminUpdateBalance() {
+            const email = document.getElementById('bal-email-in').value;
+            const amountToAdd = Number(document.getElementById('bal-amt-in').value);
+            if(!email || isNaN(amountToAdd)) return alert("Email aur Amount sahi daalein!");
+
+            const snap = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+            if(!snap.exists()) return alert("User nahi mila!");
+
+            const uid = Object.keys(snap.val())[0];
+            const currentWallet = Number(snap.val()[uid].wallet) || 0;
+
+            db.ref('users/' + uid).update({ wallet: currentWallet + amountToAdd })
+            .then(() => {
+                alert("₹" + amountToAdd + " successfully add kar diye gaye hain!");
+                document.getElementById('bal-amt-in').value = '';
+            });
+        }
+
+        function loadAdminDeps() {
+            db.ref('logs').on('value', snap => {
+                const list = document.getElementById('adm-dep-list'); list.innerHTML = '';
+                snap.forEach(c => {
+                    const d = c.val();
+                    if(d.status === 'pending') {
+                        list.innerHTML += `<div class="match-card">${d.email} - ₹${d.amount}<br>UTR: ${d.utr}<button class="btn btn-p" onclick="approveDep('${c.key}', '${d.uid}', ${d.amount})">Approve</button><button class="btn" style="background:red; color:white; margin-top:5px;" onclick="rejectDep('${c.key}')">Reject</button></div>`;
+                    }
+                });
+            });
+        }
+
+        function loadAdminWDs() {
+            db.ref('withdraws').on('value', snap => {
+                const list = document.getElementById('adm-wd-list'); list.innerHTML = '';
+                snap.forEach(c => {
+                    const w = c.val();
+                    if(w.status === 'pending') {
+                        list.innerHTML += `<div class="match-card">${w.email} - ₹${w.amount}<br>UPI: ${w.upi}<button class="btn btn-p" onclick="approveWD('${c.key}', '${w.uid}', ${w.amount})">Complete Pay</button></div>`;
+                    }
+                });
+            });
+        }
+
+        async function approveDep(key, uid, amt) {
+            const s = await db.ref('users/'+uid).get();
+            db.ref('users/'+uid).update({ wallet: (Number(s.val().wallet) || 0) + amt, pending_wallet: (Number(s.val().pending_wallet) || 0) - amt });
+            db.ref('logs/'+key).update({status: 'success'});
+            alert("Approved!");
+        }
+
+        async function approveWD(key, uid, amt) {
+            const s = await db.ref('users/'+uid).get();
+            db.ref('users/'+uid).update({ wallet: (Number(s.val().wallet) || 0) - amt });
+            db.ref('withdraws/'+key).update({status: 'success'});
+            alert("Withdraw Completed!");
+        }
+
+        function rejectDep(key) { db.ref('logs/'+key).update({status:'rejected'}); alert("Rejected!"); }
+        function banUser() { const e = document.getElementById('ban-email').value; db.ref('banned').push(e); alert("Banned!"); }
+        function showSec(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+        function showAdmTab(id) { document.querySelectorAll('.adm-tab').forEach(t => t.style.display='none'); document.getElementById(id).style.display='block'; }
+        function closeModal() { document.getElementById('rules-modal').style.display = 'none'; }
+        function copyUPI() { navigator.clipboard.writeText("7004581190@mbk"); alert("UPI Copied!"); }
+        function adminCreateMatch() {
+            db.ref('matches').push({
+                title: document.getElementById('m-title-in').value,
+                img: document.getElementById('m-img-in').value,
+                fee: parseInt(document.getElementById('m-fee-in').value),
+                prize: document.getElementById('m-prize-in').value,
+                rules: document.getElementById('m-rules-in').value
+            });
+            alert("Match Published!");
+        }
+    </script>
+</body>
+</html>
